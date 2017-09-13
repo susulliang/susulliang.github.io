@@ -1,2 +1,7 @@
-# desmonddeliang at Github Pages
-This is a site built using Github Pages.
+# desmond at Github
+
+Currently working on:
+
+- memobox
+- despot
+- electron
