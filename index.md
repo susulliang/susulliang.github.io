@@ -1,3 +1,5 @@
-# Hope this can be turned into my index page #
-
-Hello World!!
+---
+layout: post
+title:  "Welcome to Jekyll!"
+categories: jekyll update
+---
