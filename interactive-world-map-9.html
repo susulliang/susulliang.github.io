@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive World Map - Character Explorer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: Arial, sans-serif; 
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark-mode {
+            background-color: #222;
+            color: #fff;
+        }
+        #map { width: 100vw; height: 100vh; }
+        .country { stroke: #fff; stroke-width: 0.5; }
+        .country:hover { opacity: 0.8; cursor: pointer; }
+        #info-box {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            display: none;
+            max-width: 300px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .dark-mode #info-box {
+            background: #333;
+            color: #fff;
+            border-color: #555;
+        }
+        #unlocked-count {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .dark-mode #unlocked-count {
+            background: #333;
+            color: #fff;
+            border-color: #555;
+        }
+        #achievements {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .dark-mode #achievements {
+            background: #333;
+            color: #fff;
+            border-color: #555;
+        }
+        .achievement { margin-bottom: 5px; }
+        .achievement.unlocked { color: #4CAF50; }
+        #note-input {
+            width: 100%;
+            margin-top: 10px;
+            background-color: white;
+            color: black;
+        }
+        .dark-mode #note-input {
+            background-color: #444;
+            color: white;
+        }
+        #hp-bar-container {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            width: 200px;
+            height: 20px;
+            background-color: #ddd;
+            border: 1px solid #999;
+        }
+        #hp-bar {
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 0.5s;
+        }
+        #hp-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            line-height: 20px;
+            color: black;
+        }
+        .dark-mode #hp-text {
+            color: white;
+        }
+        #character {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            transition: all 0.5s ease;
+        }
+        #dark-mode-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #country-input {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 5px;
+            width: 200px;
+        }
+        .dark-mode #country-input {
+            background-color: #444;
+            color: white;
+        }
+        #notification-banner {
+            position: fixed;
+            top: -50px;
+            left: 0;
+            right: 0;
+            background-color: #4CAF50;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            transition: top 0.5s ease-in-out;
+            z-index: 1000;
+        }
+        .dark-mode #notification-banner {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="info-box"></div>
+    <div id="unlocked-count">已访问的国家: 0 / 60</div>
+    <div id="hp-bar-container">
+        <div id="hp-bar"></div>
+        <div id="hp-text"></div>
+    </div>
+    <div id="achievements">
+        <h3>成就：</h3>
+        <div id="achievement-list"></div>
+    </div>
+    <svg id="character" viewBox="0 0 100 100">
+        <circle cx="50" cy="30" r="20" fill="#FFD700"/> <!-- Head -->
+        <rect x="40" y="50" width="20" height="30" fill="#FF6347"/> <!-- Body -->
+        <line x1="40" y1="60" x2="20" y2="80" stroke="#FF6347" stroke-width="5"/> <!-- Left arm -->
+        <line x1="60" y1="60" x2="80" y2="80" stroke="#FF6347" stroke-width="5"/> <!-- Right arm -->
+        <line x1="50" y1="80" x2="30" y2="100" stroke="#4169E1" stroke-width="5"/> <!-- Left leg -->
+        <line x1="50" y1="80" x2="70" y2="100" stroke="#4169E1" stroke-width="5"/> <!-- Right leg -->
+    </svg>
+    <button id="dark-mode-toggle">切换暗色模式</button>
+    <input type="text" id="country-input" placeholder="输入国家名称以解锁">
+    <div id="notification-banner"></div>
+    <script>
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        const svg = d3.select("#map")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const projection = d3.geoMercator()
+            .scale(width / 2 / Math.PI)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
+
+        const countryStats = {
+            "United States": { population: "331 million", capital: "Washington, D.C.", language: "English" },
+            "China": { population: "1.4 billion", capital: "Beijing", language: "Mandarin Chinese" },
+            "India": { population: "1.38 billion", capital: "New Delhi", language: "Hindi, English" },
+            // ... (rest of the countries)
+        };
+
+        const visitedCountries = new Set();
+        const countryNotes = {};
+        const countryColors = {};
+
+        const colorPalette = [
+            "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8", 
+            "#F06292", "#AED581", "#7986CB", "#4DB6AC", "#DCE775"
+        ];
+
+        let currentHP = 100;
+        const hpLossPerCountry = 2;  // HP loss when visiting a new country
+
+        function getNextColor(countryName) {
+            if (!countryColors[countryName]) {
+                countryColors[countryName] = -1;
+            }
+            countryColors[countryName] = (countryColors[countryName] + 1) % (colorPalette.length + 1);
+            return countryColors[countryName] === colorPalette.length ? "#ccc" : colorPalette[countryColors[countryName]];
+        }
+
+        const achievements = [
+            { name: "初探世界", description: "访问第一个国家", threshold: 1, unlocked: false },
+            { name: "环游世界", description: "访问10个国家", threshold: 10, unlocked: false },
+            { name: "世界公民", description: "访问30个国家", threshold: 30, unlocked: false },
+            { name: "地理大师", description: "访问所有国家", threshold: Object.keys(countryStats).length, unlocked: false }
+        ];
+
+        function updateVisitedCount() {
+            d3.select("#unlocked-count").text(`已访问的国家: ${visitedCountries.size} / ${Object.keys(countryStats).length}`);
+        }
+
+        function updateHP() {
+            const hpBar = d3.select("#hp-bar");
+            const hpText = d3.select("#hp-text");
+            
+            hpBar.style("width", `${currentHP}%`);
+            hpText.text(`HP: ${currentHP}/100`);
+
+            // Update character based on HP
+            const character = d3.select("#character");
+            const opacity = 0.3 + (currentHP / 100) * 0.7;  // Opacity ranges from 0.3 to 1
+            character.style("opacity", opacity);
+
+            if (currentHP <= 0) {
+                showNotification("游戏结束！你的HP已耗尽。");
+                // You might want to add some game over logic here
+            }
+        }
+
+        function showNotification(message) {
+            const banner = d3.select("#notification-banner");
+            banner.text(message);
+            banner.style("top", "0px");
+            setTimeout(() => {
+                banner.style("top", "-50px");
+            }, 3000);
+        }
+
+        function updateAchievements() {
+            achievements.forEach(achievement => {
+                if (!achievement.unlocked && visitedCountries.size >= achievement.threshold) {
+                    achievement.unlocked = true;
+                    showNotification(`恭喜！你获得了成就：${achievement.name}`);
+                }
+            });
+
+            const achievementList = d3.select("#achievement-list");
+            achievementList.selectAll("div").remove();
+            achievementList.selectAll("div")
+                .data(achievements)
+                .enter()
+                .append("div")
+                .attr("class", d => `achievement ${d.unlocked ? "unlocked" : ""}`)
+                .text(d => `${d.name}: ${d.description} ${d.unlocked ? "✅" : "🔒"}`);
+        }
+
+        function updateInfoBox(countryName, stats) {
+            const infoBox = d3.select("#info-box");
+            infoBox.html(`
+                <h2>${countryName}</h2>
+                <p><strong>人口:</strong> ${stats.population}</p>
+                <p><strong>首都:</strong> ${stats.capital}</p>
+                <p><strong>语言:</strong> ${stats.language}</p>
+                <p><strong>状态:</strong> ${visitedCountries.has(countryName) ? "已访问" : "未访问"}</p>
+                <textarea id="note-input" placeholder="在这里添加笔记...">${countryNotes[countryName] || ""}</textarea>
+                <button onclick="saveNote('${countryName}')">保存笔记</button>
+            `);
+            infoBox.style("display", "block");
+        }
+
+        function moveCharacter(coords) {
+            const [x, y] = projection(coords);
+            d3.select("#character")
+                .style("left", `${x - 15}px`)
+                .style("top", `${y - 15}px`);
+        }
+
+        function unlockCountry(countryName, coords) {
+            const country = svg.select(`path[data-name="${countryName}"]`);
+            if (country.empty()) {
+                console.log(`Country not found: ${countryName}`);
+                return;
+            }
+            
+            if (!visitedCountries.has(countryName)) {
+                visitedCountries.add(countryName);
+                currentHP = Math.max(0, currentHP - hpLossPerCountry);
+                updateHP();
+                updateVisitedCount();
+                updateAchievements();
+                showNotification(`你已解锁 ${countryName}！`);
+            }
+            
+            const newColor = getNextColor(countryName);
+            country.attr("fill", newColor);
+            
+            const stats = countryStats[countryName];
+            if (stats) {
+                updateInfoBox(countryName, stats);
+            }
+
+            if (coords) {
+                moveCharacter(coords);
+            }
+        }
+
+        d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(function(world) {
+            const countries = topojson.feature(world, world.objects.countries);
+
+            svg.selectAll("path")
+                .data(countries.features)
+                .enter().append("path")
+                .attr("d", path)
+                .attr("class", "country")
+                .attr("data-name", d => d.properties.name)
+                .attr("fill", "#ccc")
+                .on("click", function(event, d) {
+                    const countryName = d.properties.name;
+                    const centroid = path.centroid(d);
+                    unlockCountry(countryName, centroid);
+                });
+
+            updateVisitedCount();
+            updateAchievements();
+            updateHP();
+        });
+
+        // Dark mode toggle
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+        });
+
+        // Country input handling
+        const countryInput = document.getElementById('country-input');
+        countryInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const country = svg.select(`path[data-name="${countryInput.value}"]`);
+                if (!country.empty()) {
+                    const d = country.datum();
+                    const centroid = path.centroid(d);
+                    unlockCountry(countryInput.value, centroid);
+                } else {
+                    unlockCountry(countryInput.value);
+                }
+                countryInput.value = '';
+            }
+        });
+
+        // This function needs to be global to be called from the onclick attribute
+        window.saveNote = function(countryName) {
+            const noteInput = document.getElementById("note-input");
+            countryNotes[countryName] = noteInput.value;
+            showNotification("笔记已保存！");
+        };
+    </script>
+</body>
+</html>
