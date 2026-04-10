@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoMatrix - 2D Dot Map Encryption</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --bg-input: #22222e;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #2e2e3a;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Retro Mosaic Background */
+        #mosaic-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.15;
+        }
+
+        .app-container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 24px 16px 48px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 20px;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 32px var(--accent-glow);
+        }
+
+        .logo-icon svg {
+            width: 28px;
+            height: 28px;
+            fill: white;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--text-primary), var(--accent-hover));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            max-width: 480px;
+            margin: 12px auto 0;
+        }
+
+        /* Card */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-header svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--accent);
+        }
+
+        .card-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            letter-spacing: 0.02em;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper svg {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            fill: var(--text-muted);
+            pointer-events: none;
+        }
+
+        input[type="password"],
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 15px;
+            transition: all 0.2s ease;
+        }
+
+        input[type="password"]:focus,
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        input[type="password"]::placeholder,
+        input[type="text"]::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .input-with-icon {
+            padding-left: 44px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        /* File Input */
+        .file-input-wrapper {
+            position: relative;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 16px;
+            background: var(--bg-input);
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .file-input-label:hover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.05);
+            color: var(--text-primary);
+        }
+
+        .file-input-label svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .file-input-label.has-file {
+            border-color: var(--success);
+            border-style: solid;
+            color: var(--success);
+        }
+
+        .file-name {
+            font-weight: 500;
+            word-break: break-all;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-secondary);
+            padding: 6px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: white;
+            box-shadow: 0 4px 16px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--accent-glow);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .input-type-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .input-type-btn {
+            flex: 1;
+            padding: 10px 16px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .input-type-btn:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        .input-type-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* Output Section */
+        .output-section {
+            display: none;
+        }
+
+        .output-section.show {
+            display: block;
+        }
+
+        .output-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .output-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .output-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .output-title svg {
+            width: 16px;
+            height: 16px;
+            fill: var(--success);
+        }
+
+        .dot-map-container {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            justify-content: center;
+            overflow: auto;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .download-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .download-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+        }
+
+        .copy-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .output-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .text-output-section {
+            margin-top: 20px;
+        }
+
+        .text-output-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        .text-output-label svg {
+            width: 14px;
+            height: 14px;
+            fill: var(--text-muted);
+        }
+
+        .text-output-box {
+            position: relative;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .text-output-content {
+            padding: 14px;
+            padding-right: 80px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-size: 12px;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 150px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+
+        .text-output-copy {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 6px 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .text-output-copy:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .text-output-copy.copied {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .text-output-copy svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        .grid-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: var(--bg-input);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .grid-info svg {
+            width: 14px;
+            height: 14px;
+            fill: var(--text-muted);
+        }
+
+        /* Decrypted Output */
+        .decrypted-text {
+            background: var(--bg-input);
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 14px;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        .decrypted-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+
+        /* Error Message */
+        .error-message {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 16px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            color: var(--error);
+            font-size: 14px;
+            margin-top: 16px;
+        }
+
+        .error-message.show {
+            display: flex;
+        }
+
+        .error-message svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--error);
+            flex-shrink: 0;
+        }
+
+        /* Feature Tags */
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .feature-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--accent-hover);
+        }
+
+        .feature-tag svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .app-container {
+                padding: 16px 12px 32px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .card {
+                padding: 18px;
+                border-radius: 12px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            animation: fadeIn 0.4s ease;
+        }
+
+        .card:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+    </style>
+</head>
+<body>
+    <!-- Retro Mosaic Background -->
+    <canvas id="mosaic-canvas"></canvas>
+    
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                </div>
+                <h1>CryptoMatrix</h1>
+            </div>
+            <p>Encrypt text and images into a printable 2D dot map with built-in error correction for reliable scanning</p>
+            <div class="features">
+                <span class="feature-tag">
+                    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    AES-256 Encryption
+                </span>
+                <span class="feature-tag">
+                    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    Error Correction
+                </span>
+                <span class="feature-tag">
+                    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    Print & Scan Ready
+                </span>
+            </div>
+        </header>
+
+        <!-- User Key (Shared) -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="userKey">User Key</label>
+                <div class="input-wrapper">
+                    <svg viewBox="0 0 24 24"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                    <input type="password" id="userKey" class="input-with-icon" placeholder="Enter your encryption/decryption key">
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('encrypt')" id="tabEncrypt">
+                <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                Encrypt
+            </button>
+            <button class="tab-btn" onclick="switchTab('decrypt')" id="tabDecrypt">
+                <svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>
+                Decrypt
+            </button>
+            <button class="tab-btn" onclick="switchTab('about')" id="tabAbout">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                About
+            </button>
+        </div>
+
+        <!-- Encrypt Panel -->
+        <div class="tab-content active" id="panelEncrypt">
+            <div class="card">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                    <h2>Encrypt Data</h2>
+                </div>
+
+                <div class="form-group">
+                    <label for="textInput">Text Content</label>
+                    <textarea id="textInput" rows="3" placeholder="Enter the text you want to encrypt..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Image Attachment (Optional)</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="imageInput" class="file-input" accept="image/*" onchange="updateFileLabel(this, 'imageLabel')">
+                        <label for="imageInput" class="file-input-label" id="imageLabel">
+                            <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                            <span>Choose an image file</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="encrypt()">
+                    <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                    Generate Dot Map
+                </button>
+            </div>
+        </div>
+
+        <!-- Decrypt Panel -->
+        <div class="tab-content" id="panelDecrypt">
+            <div class="card">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>
+                    <h2>Decrypt Data</h2>
+                </div>
+
+                <div class="form-group">
+                    <label>Input Type</label>
+                    <div class="input-type-toggle">
+                        <button class="input-type-btn active" id="inputTypeImage" onclick="setDecryptInputType('image')">Image</button>
+                        <button class="input-type-btn" id="inputTypeText" onclick="setDecryptInputType('text')">Text (Base64)</button>
+                    </div>
+                </div>
+
+                <!-- Image Input -->
+                <div class="form-group" id="decryptImageSection">
+                    <label>Dot Map Image</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="dotMapInput" class="file-input" accept="image/*" onchange="updateFileLabel(this, 'dotMapLabel')">
+                        <label for="dotMapInput" class="file-input-label" id="dotMapLabel">
+                            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5-7l-3 3.72L9 13l-3 4h12l-4-5z"/></svg>
+                            <span>Upload dot map image (PNG/JPG)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Text Input -->
+                <div class="form-group" id="decryptTextSection" style="display: none;">
+                    <label for="base64Input">Base64 Encoded Data</label>
+                    <textarea id="base64Input" rows="4" placeholder="Paste the base64 encoded data here..."></textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="decrypt()">
+                    <svg viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg>
+                    Decrypt
+                </button>
+            </div>
+        </div>
+
+        <!-- About Panel -->
+        <div class="tab-content" id="panelAbout">
+            <div class="card">
+                <div class="card-header">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    <h2>About CryptoMatrix</h2>
+                </div>
+                
+                <div style="color: var(--text-secondary); line-height: 1.8;">
+                    <p style="margin-bottom: 16px;">
+                        <strong style="color: var(--text-primary);">CryptoMatrix</strong> is a secure encryption tool that transforms your text and images into a printable 2D dot map format. The encrypted data can be stored as either an image or as base64 text.
+                    </p>
+                    
+                    <p style="margin-bottom: 16px;">
+                        <strong style="color: var(--text-primary);">Key Features:</strong>
+                    </p>
+                    <ul style="margin-left: 20px; margin-bottom: 16px;">
+                        <li>AES-256 encryption for military-grade security</li>
+                        <li>Error correction codes (ECC) for reliable scanning</li>
+                        <li>Print and scan friendly format</li>
+                        <li>Support for both images and base64 text transmission</li>
+                    </ul>
+                    
+                    <p style="margin-bottom: 16px;">
+                        <strong style="color: var(--text-primary);">How It Works:</strong>
+                    </p>
+                    <ol style="margin-left: 20px; margin-bottom: 16px;">
+                        <li>Enter your user key (shared for encryption and decryption)</li>
+                        <li>On the Encrypt tab, input text and/or upload an image</li>
+                        <li>Download the dot map image or copy the base64 text</li>
+                        <li>On the Decrypt tab, upload the image or paste the base64 text</li>
+                        <li>Enter your user key to decrypt and retrieve your data</li>
+                    </ol>
+                    
+                    <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
+                        <span style="font-size: 12px; color: var(--text-muted);">Version 0.1</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Section -->
+        <div class="output-section" id="outputSection">
+            <div class="output-card" id="outputCard">
+                <div class="output-header">
+                    <div class="output-title">
+                        <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        <span>Output</span>
+                    </div>
+                    <div id="gridInfo" class="grid-info">
+                        <svg viewBox="0 0 24 24"><path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
+                        <span id="gridSizeText">Grid: 0×0</span>
+                    </div>
+                </div>
+                <div id="output"></div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error-message" id="errorMessage">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            <span id="error"></span>
+        </div>
+    </div>
+
+    <script>
+        const CELL_SIZE = 10; // Pixels per cell in the grid
+        const REPETITION = 2; // 2x2 block repetition (4x per bit for error correction)
+        const BORDER_SIZE = 1; // Border thickness in cells
+
+        // Helper: Serialize text + image to binary (ArrayBuffer)
+        async function serializeToBinary(text, imageFile) {
+            const data = { text };
+            if (imageFile) {
+                const reader = new FileReader();
+                await new Promise(resolve => {
+                    reader.onload = () => { data.image = reader.result; resolve(); }; // base64
+                    reader.readAsDataURL(imageFile);
+                });
+            }
+            const jsonStr = JSON.stringify(data);
+            return new TextEncoder().encode(jsonStr).buffer; // ArrayBuffer
+        }
+
+        // Helper: Deserialize binary back to text + image
+        function deserializeFromBinary(buffer) {
+            const jsonStr = new TextDecoder().decode(new Uint8Array(buffer));
+            const data = JSON.parse(jsonStr);
+            return data;
+        }
+
+        // Derive key from seed using PBKDF2
+        async function deriveKey(seed, salt = crypto.getRandomValues(new Uint8Array(16))) {
+            const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(seed), 'PBKDF2', false, ['deriveBits', 'deriveKey']);
+            return {
+                key: await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']),
+                salt
+            };
+        }
+
+        // Convert byte array to bit array (with repetition for ECC)
+        function bytesToBitsWithRepetition(bytes) {
+            let bits = [];
+            bytes.forEach(byte => {
+                for (let i = 7; i >= 0; i--) {
+                    const bit = (byte >> i) & 1;
+                    for (let r = 0; r < REPETITION * REPETITION; r++) { // Repeat for 2x2 block
+                        bits.push(bit);
+                    }
+                }
+            });
+            return bits;
+        }
+
+        // Extract bits from bit array (with majority voting for ECC)
+        function bitsToBytesWithCorrection(bits) {
+            let bytes = [];
+            let byte = 0;
+            let bitIndex = 0;
+            for (let i = 0; i < bits.length; i += REPETITION * REPETITION) { // Process each 2x2 group
+                const group = bits.slice(i, i + REPETITION * REPETITION);
+                const sum = group.reduce((a, b) => a + b, 0);
+                const majority = sum > (group.length / 2) ? 1 : 0; // Majority vote
+                byte = (byte << 1) | majority;
+                bitIndex++;
+                if (bitIndex === 8) {
+                    bytes.push(byte);
+                    byte = 0;
+                    bitIndex = 0;
+                }
+            }
+            return new Uint8Array(bytes);
+        }
+
+        // Create 2D grid from bits (with border)
+        function createGrid(bits) {
+            const totalBits = bits.length;
+            let gridSize = Math.ceil(Math.sqrt(totalBits)); // Square-ish
+            gridSize += 2 * BORDER_SIZE; // Add border
+            if (gridSize % REPETITION !== 0) gridSize += (REPETITION - (gridSize % REPETITION)); // Ensure divisible by repetition
+            const grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
+
+            // Add black border
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    if (i < BORDER_SIZE || j < BORDER_SIZE || i >= gridSize - BORDER_SIZE || j >= gridSize - BORDER_SIZE) {
+                        grid[i][j] = 1;
+                    }
+                }
+            }
+
+            // Fill data (skipping border)
+            let bitIdx = 0;
+            for (let i = BORDER_SIZE; i < gridSize - BORDER_SIZE && bitIdx < totalBits; i++) {
+                for (let j = BORDER_SIZE; j < gridSize - BORDER_SIZE && bitIdx < totalBits; j++) {
+                    grid[i][j] = bits[bitIdx++];
+                }
+            }
+            return { grid, gridSize };
+        }
+
+        // Draw grid on canvas
+        function drawGridOnCanvas(grid, gridSize, canvas) {
+            const ctx = canvas.getContext('2d');
+            canvas.width = gridSize * CELL_SIZE;
+            canvas.height = gridSize * CELL_SIZE;
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000';
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    if (grid[y][x] === 1) {
+                        ctx.beginPath();
+                        ctx.arc((x + 0.5) * CELL_SIZE, (y + 0.5) * CELL_SIZE, CELL_SIZE / 2 - 1, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        // Extract bits from uploaded image (simple thresholding, assumes aligned and scaled)
+        async function extractBitsFromImage(imageFile, expectedSize) {
+            const img = new Image();
+            await new Promise(resolve => { img.onload = resolve; img.src = URL.createObjectURL(imageFile); });
+            const canvas = document.createElement('canvas');
+            canvas.width = expectedSize * CELL_SIZE; // Assume uploaded image matches size
+            canvas.height = expectedSize * CELL_SIZE;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height); // Resize if needed
+
+            const bits = [];
+            for (let y = 0; y < expectedSize; y++) {
+                for (let x = 0; x < expectedSize; x++) {
+                    const data = ctx.getImageData(x * CELL_SIZE + CELL_SIZE / 2, y * CELL_SIZE + CELL_SIZE / 2, 1, 1).data;
+                    const brightness = (data[0] + data[1] + data[2]) / 3;
+                    bits.push(brightness < 128 ? 1 : 0); // Threshold: dark = 1, light = 0
+                }
+            }
+            // Remove border bits (assume border is detected as 1s, but we skip them)
+            const innerSize = expectedSize - 2 * BORDER_SIZE;
+            const innerBits = [];
+            for (let y = BORDER_SIZE; y < expectedSize - BORDER_SIZE; y++) {
+                for (let x = BORDER_SIZE; x < expectedSize - BORDER_SIZE; x++) {
+                    innerBits.push(bits[y * expectedSize + x]);
+                }
+            }
+            return innerBits.slice(0, innerSize * innerSize); // Trim padding
+        }
+
+        // Update file input label
+        function updateFileLabel(input, labelId) {
+            const label = document.getElementById(labelId);
+            if (input.files && input.files.length > 0) {
+                label.classList.add('has-file');
+                label.querySelector('span').textContent = input.files[0].name;
+            } else {
+                label.classList.remove('has-file');
+                const defaultText = labelId === 'imageLabel' ? 'Choose an image file' : 'Upload scanned dot map (PNG/JPG)';
+                label.querySelector('span').textContent = defaultText;
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            const errorMessage = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorMessage.classList.add('show');
+        }
+
+        // Hide error message
+        function hideError() {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.classList.remove('show');
+        }
+
+        // Show output section
+        function showOutput() {
+            const outputSection = document.getElementById('outputSection');
+            outputSection.classList.add('show');
+        }
+
+        // Copy text to clipboard
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                button.classList.add('copied');
+                button.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Copied!';
+                setTimeout(() => {
+                    button.classList.remove('copied');
+                    button.innerHTML = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>Copy';
+                }, 2000);
+            });
+        }
+
+        // Switch between tabs
+        function switchTab(tab) {
+            // Update tab buttons
+            document.getElementById('tabEncrypt').classList.toggle('active', tab === 'encrypt');
+            document.getElementById('tabDecrypt').classList.toggle('active', tab === 'decrypt');
+            document.getElementById('tabAbout').classList.toggle('active', tab === 'about');
+            
+            // Update panels
+            document.getElementById('panelEncrypt').classList.toggle('active', tab === 'encrypt');
+            document.getElementById('panelDecrypt').classList.toggle('active', tab === 'decrypt');
+            document.getElementById('panelAbout').classList.toggle('active', tab === 'about');
+        }
+
+        // Set decrypt input type
+        function setDecryptInputType(type) {
+            document.getElementById('inputTypeImage').classList.toggle('active', type === 'image');
+            document.getElementById('inputTypeText').classList.toggle('active', type === 'text');
+            document.getElementById('decryptImageSection').style.display = type === 'image' ? 'block' : 'none';
+            document.getElementById('decryptTextSection').style.display = type === 'text' ? 'block' : 'none';
+        }
+
+        // Encrypt function
+        async function encrypt() {
+            hideError();
+            showOutput();
+            const outputDiv = document.getElementById('output');
+            const key = document.getElementById('userKey').value;
+            const text = document.getElementById('textInput').value;
+            const imageFile = document.getElementById('imageInput').files[0];
+
+            if (!key) { showError('Please enter your user key'); return; }
+            if (!text && !imageFile) { showError('Please provide text or upload an image'); return; }
+
+            // Show loading state
+            outputDiv.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><div style="font-size:24px;margin-bottom:8px;">⚙️</div>Generating encrypted dot map...</div>';
+
+            try {
+                const binary = await serializeToBinary(text, imageFile);
+                const { key: cryptoKey, salt } = await deriveKey(key);
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, binary);
+
+                const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength + 2); // +2 bytes for gridSize
+                combined.set(salt, 0);
+                combined.set(iv, salt.length);
+                combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+
+                const bits = bytesToBitsWithRepetition(combined);
+                const { grid, gridSize } = createGrid(bits);
+                // Store gridSize in last 2 bytes of combined (for decryption detection)
+                combined[combined.length - 2] = (gridSize >> 8) & 0xFF;
+                combined[combined.length - 1] = gridSize & 0xFF;
+
+                // Generate base64 for text transmission
+                const base64Data = btoa(String.fromCharCode.apply(null, combined));
+
+                // Update grid size display
+                document.getElementById('gridSizeText').textContent = `Grid: ${gridSize}×${gridSize}`;
+
+                // Create canvas container
+                outputDiv.innerHTML = '';
+                const canvasContainer = document.createElement('div');
+                canvasContainer.className = 'dot-map-container';
+                const canvas = document.createElement('canvas');
+                drawGridOnCanvas(grid, gridSize, canvas);
+                canvasContainer.appendChild(canvas);
+                outputDiv.appendChild(canvasContainer);
+
+                // Buttons container
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'output-buttons';
+                
+                // Download PNG button
+                const downloadLink = document.createElement('a');
+                downloadLink.href = canvas.toDataURL('image/png');
+                downloadLink.download = 'encrypted-dotmap.png';
+                downloadLink.className = 'download-btn';
+                downloadLink.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Download PNG';
+                buttonContainer.appendChild(downloadLink);
+                
+                // Copy text button
+                const copyTextBtn = document.createElement('button');
+                copyTextBtn.className = 'copy-btn';
+                copyTextBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>Copy Text';
+                copyTextBtn.onclick = () => copyToClipboard(base64Data, copyTextBtn);
+                buttonContainer.appendChild(copyTextBtn);
+                
+                outputDiv.appendChild(buttonContainer);
+
+                // Text output section
+                const textSection = document.createElement('div');
+                textSection.className = 'text-output-section';
+                textSection.innerHTML = `
+                    <div class="text-output-label">
+                        <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+                        Base64 Encoded Data (for text transmission)
+                    </div>
+                    <div class="text-output-box">
+                        <div class="text-output-content" id="base64Content">${base64Data}</div>
+                        <button class="text-output-copy" onclick="copyToClipboard(document.getElementById('base64Content').textContent, this)">
+                            <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                            Copy
+                        </button>
+                    </div>
+                `;
+                outputDiv.appendChild(textSection);
+            } catch (e) {
+                showError('Encryption failed: ' + e.message);
+            }
+        }
+
+        // Decrypt function
+        async function decrypt() {
+            hideError();
+            showOutput();
+            const outputDiv = document.getElementById('output');
+            const key = document.getElementById('userKey').value;
+            const dotMapFile = document.getElementById('dotMapInput').files[0];
+            const base64Input = document.getElementById('base64Input').value.trim();
+            const inputType = document.getElementById('inputTypeImage').classList.contains('active') ? 'image' : 'text';
+
+            if (!key) { showError('Please enter your user key'); return; }
+
+            let combined;
+            let gridSize = 0;
+
+            if (inputType === 'image') {
+                if (!dotMapFile) { showError('Please upload a dot map image to decode'); return; }
+                outputDiv.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><div style="font-size:24px;margin-bottom:8px;">🔓</div>Decrypting dot map image...</div>';
+
+                try {
+                    // Extract bits from image
+                    const img = new Image();
+                    await new Promise(resolve => { img.onload = resolve; img.src = URL.createObjectURL(dotMapFile); });
+                    const detectedSize = Math.round(img.width / CELL_SIZE);
+                    const bits = await extractBitsFromImage(dotMapFile, detectedSize);
+                    combined = bitsToBytesWithCorrection(bits);
+                    gridSize = (combined[combined.length - 2] << 8) | combined[combined.length - 1];
+                } catch (e) {
+                    showError('Failed to process image: ' + e.message);
+                    return;
+                }
+            } else {
+                if (!base64Input) { showError('Please paste the base64 encoded data'); return; }
+                outputDiv.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);"><div style="font-size:24px;margin-bottom:8px;">🔓</div>Decrypting base64 data...</div>';
+
+                try {
+                    // Decode base64
+                    const binaryString = atob(base64Input);
+                    const bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    combined = bytes;
+                    gridSize = (combined[combined.length - 2] << 8) | combined[combined.length - 1];
+                } catch (e) {
+                    showError('Failed to decode base64: ' + e.message);
+                    return;
+                }
+            }
+
+            try {
+                // Update grid size display
+                document.getElementById('gridSizeText').textContent = `Grid: ${gridSize}×${gridSize}`;
+
+                const salt = combined.slice(0, 16);
+                const iv = combined.slice(16, 28);
+                const encrypted = combined.slice(28, combined.length - 2);
+
+                const { key: cryptoKey } = await deriveKey(key, salt);
+                const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, cryptoKey, encrypted);
+
+                const data = deserializeFromBinary(decrypted);
+                
+                // Create output with styled decrypted content
+                outputDiv.innerHTML = '';
+                
+                if (data.text) {
+                    const textContainer = document.createElement('div');
+                    textContainer.className = 'decrypted-text';
+                    textContainer.innerHTML = `<strong style="color:var(--text-secondary);font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Decrypted Text</strong><br><br>${data.text}`;
+                    outputDiv.appendChild(textContainer);
+                }
+
+                if (data.image) {
+                    const imageContainer = document.createElement('div');
+                    imageContainer.style.marginTop = '16px';
+                    imageContainer.innerHTML = `<strong style="color:var(--text-secondary);font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Decrypted Image</strong>`;
+                    const imgElem = document.createElement('img');
+                    imgElem.src = data.image;
+                    imgElem.className = 'decrypted-image';
+                    imageContainer.appendChild(imgElem);
+                    
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = data.image;
+                    downloadLink.download = 'decrypted-image.png';
+                    downloadLink.className = 'download-btn';
+                    downloadLink.style.marginTop = '12px';
+                    downloadLink.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Download Image';
+                    imageContainer.appendChild(downloadLink);
+                    
+                    outputDiv.appendChild(imageContainer);
+                }
+            } catch (e) {
+                showError('Decryption failed: ' + e.message + ' (Wrong key or corrupted data?)');
+            }
+        }
+
+        // Retro Mosaic Background Animation
+        (function initMosaicBackground() {
+            const canvas = document.getElementById('mosaic-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            let width, height;
+            let tiles = [];
+            const TILE_SIZE = 40;
+            const COLORS = [
+                [99, 102, 241],   // Indigo
+                [139, 92, 246],   // Purple
+                [168, 85, 247],   // Violet
+                [217, 70, 239],   // Fuchsia
+                [59, 130, 246],   // Blue
+                [34, 211, 238],   // Cyan
+                [6, 182, 212],    // Teal
+                [16, 185, 129],   // Emerald
+            ];
+            
+            function resize() {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+                initTiles();
+            }
+            
+            function initTiles() {
+                const cols = Math.ceil(width / TILE_SIZE) + 1;
+                const rows = Math.ceil(height / TILE_SIZE) + 1;
+                tiles = [];
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        tiles.push({
+                            x: x * TILE_SIZE,
+                            y: y * TILE_SIZE,
+                            color: COLORS[Math.floor(Math.random() * COLORS.length)],
+                            phase: Math.random() * Math.PI * 2,
+                            speed: 0.5 + Math.random() * 1.5,
+                            size: TILE_SIZE - 2
+                        });
+                    }
+                }
+            }
+            
+            let time = 0;
+            function animate() {
+                ctx.fillStyle = '#0a0a0f';
+                ctx.fillRect(0, 0, width, height);
+                
+                time += 0.02;
+                
+                tiles.forEach((tile, i) => {
+                    const wave = Math.sin(time * tile.speed + tile.phase);
+                    const brightness = 0.5 + wave * 0.3;
+                    const alpha = 0.3 + wave * 0.2;
+                    
+                    const [r, g, b] = tile.color;
+                    const finalR = Math.floor(r * brightness);
+                    const finalG = Math.floor(g * brightness);
+                    const finalB = Math.floor(b * brightness);
+                    
+                    ctx.fillStyle = `rgba(${finalR}, ${finalG}, ${finalB}, ${alpha})`;
+                    
+                    // Draw rounded square
+                    const offset = (1 - wave * 0.1) * TILE_SIZE / 2;
+                    const size = tile.size * (0.8 + wave * 0.2);
+                    
+                    ctx.beginPath();
+                    const radius = 6;
+                    const x = tile.x + offset;
+                    const y = tile.y + offset;
+                    ctx.roundRect(x, y, size, size, radius);
+                    ctx.fill();
+                    
+                    // Add glow effect
+                    ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.5)`;
+                    ctx.shadowBlur = 15 * alpha;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                });
+                
+                // Update accent color based on average color
+                const avgColor = COLORS[Math.floor((time * 0.5) % COLORS.length)];
+                updateAccentColor(avgColor);
+                
+                requestAnimationFrame(animate);
+            }
+            
+            function updateAccentColor(color) {
+                const [r, g, b] = color;
+                const root = document.documentElement;
+                root.style.setProperty('--accent', `rgb(${r}, ${g}, ${b})`);
+                root.style.setProperty('--accent-hover', `rgb(${Math.min(255, r + 30)}, ${Math.min(255, g + 30)}, ${Math.min(255, b + 30)})`);
+                root.style.setProperty('--accent-glow', `rgba(${r}, ${g}, ${b}, 0.4)`);
+            }
+            
+            window.addEventListener('resize', resize);
+            resize();
+            animate();
+        })();
+    </script>
+</body>
+</html>
